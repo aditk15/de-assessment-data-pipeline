@@ -11,7 +11,7 @@ TABLE_COLUMNS = {
     "ORDERS": ["ORDER_ID", "CUSTOMER_ID", "ORDER_DATE", "ORDER_STATUS", "TOTAL_AMOUNT"],
     "ORDER_ITEMS": ["ORDER_ITEM_ID", "ORDER_ID", "PRODUCT_ID", "QUANTITY", "UNIT_PRICE"],
     "PAYMENTS": ["PAYMENT_ID", "ORDER_ID", "PAYMENT_DATE", "PAYMENT_METHOD", "PAYMENT_STATUS", "AMOUNT"],
-    "SHIPMENTS": ["SHIPMENT_ID", "ORDER_ID", "SHIPMENT_DATE", "DELIVERY_DATE", "STATUS"]
+    "SHIPMENTS": ["SHIPMENT_ID", "ORDER_ID", "SHIPMENT_DATE", "DELIVERY_DATE", "CARRIER", "SHIPMENT_STATUS"]
 }
 
 with open("config/snowflake_config.json") as f:
@@ -63,10 +63,10 @@ try:
             FORCE = TRUE;
         """)
 
-    print("✅ Bronze ingestion SUCCESS")
+    print("Bronze ingestion SUCCESS")
 
 except Exception as e:
-    print("❌ Bronze ingestion failed")
+    print("Bronze ingestion failed")
     print(e)
 
 finally:
