@@ -8,12 +8,12 @@ SELECT
     P.IS_ACTIVE,
     COUNT(DISTINCT F.ORDER_ID) AS times_ordered,
     SUM(F.QUANTITY) AS total_quantity_sold,
-    SUM(F.REVENUE) AS total_revenue,
-    AVG(F.ACTUAL_PRICE) AS avg_selling_price,
-    SUM(F.TOTAL_DISCOUNT) AS total_discounts_given,
+    SUM(F.REVENUE_USD) AS total_revenue_usd,
+    AVG(F.ACTUAL_PRICE_USD) AS avg_selling_price_usd,
+    SUM(F.TOTAL_DISCOUNT_USD) AS total_discounts_given_usd,
     AVG(F.DISCOUNT_PERCENTAGE) AS avg_discount_percentage,
     COUNT(DISTINCT F.CUSTOMER_ID) AS unique_customers
 FROM GOLD.DIM_PRODUCT P
 INNER JOIN GOLD.FACT_ORDER_ITEMS F ON P.PRODUCT_ID = F.PRODUCT_ID
 GROUP BY P.PRODUCT_ID, P.PRODUCT_NAME, P.CATEGORY, P.PRICE, P.CURRENCY, P.IS_ACTIVE
-ORDER BY total_revenue DESC;
+ORDER BY total_revenue_usd DESC;

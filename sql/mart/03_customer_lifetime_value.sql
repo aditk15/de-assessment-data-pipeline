@@ -6,10 +6,10 @@ SELECT
     C.COUNTRY,
     C.IS_ACTIVE,
     COUNT(DISTINCT F.ORDER_ID) AS total_orders,
-    SUM(F.ORDER_REVENUE) AS lifetime_revenue,
-    AVG(F.ORDER_REVENUE) AS avg_order_value,
+    SUM(F.ORDER_REVENUE_USD) AS lifetime_revenue_usd,
+    AVG(F.ORDER_REVENUE_USD) AS avg_order_value_usd,
     SUM(F.TOTAL_QUANTITY) AS total_items_purchased,
-    SUM(F.TOTAL_DISCOUNT) AS total_discounts_received,
+    SUM(F.TOTAL_DISCOUNT_USD) AS total_discounts_received_usd,
     MIN(F.ORDER_DATE) AS first_order_date,
     MAX(F.ORDER_DATE) AS last_order_date,
     DATEDIFF(DAY, MIN(F.ORDER_DATE), MAX(F.ORDER_DATE)) AS customer_lifetime_days,
@@ -17,4 +17,4 @@ SELECT
 FROM GOLD.DIM_CUSTOMER C
 INNER JOIN GOLD.FACT_ORDERS F ON C.CUSTOMER_ID = F.CUSTOMER_ID
 GROUP BY C.CUSTOMER_ID, C.FULL_NAME, C.EMAIL, C.COUNTRY, C.IS_ACTIVE
-ORDER BY lifetime_revenue DESC;
+ORDER BY lifetime_revenue_usd DESC;

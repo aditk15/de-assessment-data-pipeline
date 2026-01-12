@@ -3,12 +3,12 @@ SELECT
     F.PRODUCT_CATEGORY,
     COUNT(DISTINCT F.ORDER_ID) AS total_orders,
     SUM(F.QUANTITY) AS total_quantity_sold,
-    SUM(F.REVENUE) AS total_revenue,
-    AVG(F.REVENUE) AS avg_line_value,
-    SUM(F.TOTAL_DISCOUNT) AS total_discounts,
+    SUM(F.REVENUE_USD) AS total_revenue_usd,
+    AVG(F.REVENUE_USD) AS avg_line_value_usd,
+    SUM(F.TOTAL_DISCOUNT_USD) AS total_discounts_usd,
     AVG(F.DISCOUNT_PERCENTAGE) AS avg_discount_percentage,
     COUNT(DISTINCT F.CUSTOMER_ID) AS unique_customers,
     COUNT(DISTINCT F.PRODUCT_ID) AS unique_products
 FROM GOLD.FACT_ORDER_ITEMS F
 GROUP BY F.PRODUCT_CATEGORY
-ORDER BY total_revenue DESC;
+ORDER BY total_revenue_usd DESC;

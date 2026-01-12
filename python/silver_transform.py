@@ -25,6 +25,7 @@ try:
         "sql/silver/04_order_items.sql",
         "sql/silver/05_payments.sql",
         "sql/silver/06_shipments.sql",
+        "sql/silver/07_exchange_rates.sql",
     ]
 
     for sql_file in sql_files:

@@ -7,10 +7,10 @@ SELECT
     D.day,
     D.day_name,
     COUNT(DISTINCT F.ORDER_ID) AS total_orders,
-    SUM(F.ORDER_REVENUE) AS total_revenue,
-    AVG(F.ORDER_REVENUE) AS avg_order_value,
+    SUM(F.ORDER_REVENUE_USD) AS total_revenue_usd,
+    AVG(F.ORDER_REVENUE_USD) AS avg_order_value_usd,
     SUM(F.TOTAL_QUANTITY) AS total_items_sold,
-    SUM(F.TOTAL_DISCOUNT) AS total_discounts,
+    SUM(F.TOTAL_DISCOUNT_USD) AS total_discounts_usd,
     SUM(F.IS_PAID) AS paid_orders,
     SUM(F.IS_DELIVERED) AS delivered_orders,
     SUM(F.IS_FULFILLED) AS fulfilled_orders
