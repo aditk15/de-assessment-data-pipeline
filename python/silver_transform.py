@@ -57,6 +57,9 @@ try:
     cursor.execute("SELECT COUNT(*) FROM SILVER.SHIPMENTS WHERE IS_ORDER_ORPHANED = TRUE")
     orphaned_shipments = cursor.fetchone()[0]
     
+    cursor.execute("SELECT COUNT(*) FROM SILVER.SHIPMENTS WHERE IS_DELIVERY_DATE_ILLOGICAL = TRUE")
+    illogical_delivery_dates = cursor.fetchone()[0]
+    
     total_orphaned = orphaned_orders + orphaned_items + orphaned_payments + orphaned_shipments
     status = "PASS" if total_orphaned == 0 else f"✗ FAIL ({total_orphaned:,} orphaned records)"
     print(f"  {status}")
@@ -71,9 +74,13 @@ try:
     cursor.execute("SELECT COUNT(*) FROM SILVER.ORDER_ITEMS WHERE IS_QUANTITY_INVALID = TRUE")
     invalid_quantities = cursor.fetchone()[0]
     
-    total_issues = missing_emails + invalid_prices + invalid_quantities + total_orphaned
+    cursor.execute("SELECT COUNT(*) FROM SILVER.SHIPMENTS WHERE IS_DELIVERY_DATE_MISSING = TRUE")
+    missing_delivery_dates = cursor.fetchone()[0]
+    
+    total_issues = missing_emails + invalid_prices + invalid_quantities + total_orphaned + illogical_delivery_dates
     quality_score = ((total_records - total_issues) / total_records * 100) if total_records > 0 else 0
     print(f"  Missing emails: {missing_emails:,} | Invalid prices: {invalid_prices:,} | Invalid quantities: {invalid_quantities:,}")
+    print(f"  Missing delivery dates: {missing_delivery_dates:,} | Illogical delivery dates: {illogical_delivery_dates:,}")
     print(f"  Quality Score: {quality_score:.1f}%")
 
     print("\nBusiness Metrics:")
