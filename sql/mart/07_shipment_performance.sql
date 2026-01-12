@@ -1,0 +1,15 @@
+CREATE OR REPLACE VIEW MART.SHIPMENT_PERFORMANCE AS
+SELECT 
+    S.CARRIER,
+    S.SHIPMENT_STATUS,
+    COUNT(*) AS total_shipments,
+    SUM(CASE WHEN S.IS_DELIVERED THEN 1 ELSE 0 END) AS delivered_shipments,
+    ROUND(SUM(CASE WHEN S.IS_DELIVERED THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS delivery_rate,
+    AVG(S.DELIVERY_DAYS) AS avg_delivery_days,
+    MIN(S.DELIVERY_DAYS) AS min_delivery_days,
+    MAX(S.DELIVERY_DAYS) AS max_delivery_days,
+    AVG(S.DAYS_TO_SHIP) AS avg_days_to_ship,
+    AVG(S.DAYS_TO_DELIVER) AS avg_days_to_deliver
+FROM GOLD.FACT_SHIPMENTS S
+GROUP BY S.CARRIER, S.SHIPMENT_STATUS
+ORDER BY total_shipments DESC;

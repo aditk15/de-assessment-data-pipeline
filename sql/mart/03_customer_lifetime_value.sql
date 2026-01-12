@@ -1,0 +1,20 @@
+CREATE OR REPLACE VIEW MART.CUSTOMER_LIFETIME_VALUE AS
+SELECT 
+    C.CUSTOMER_ID,
+    C.FULL_NAME,
+    C.EMAIL,
+    C.COUNTRY,
+    C.IS_ACTIVE,
+    COUNT(DISTINCT F.ORDER_ID) AS total_orders,
+    SUM(F.ORDER_REVENUE) AS lifetime_revenue,
+    AVG(F.ORDER_REVENUE) AS avg_order_value,
+    SUM(F.TOTAL_QUANTITY) AS total_items_purchased,
+    SUM(F.TOTAL_DISCOUNT) AS total_discounts_received,
+    MIN(F.ORDER_DATE) AS first_order_date,
+    MAX(F.ORDER_DATE) AS last_order_date,
+    DATEDIFF(DAY, MIN(F.ORDER_DATE), MAX(F.ORDER_DATE)) AS customer_lifetime_days,
+    ROUND(SUM(F.IS_PAID) * 100.0 / COUNT(*), 2) AS payment_success_rate
+FROM GOLD.DIM_CUSTOMER C
+INNER JOIN GOLD.FACT_ORDERS F ON C.CUSTOMER_ID = F.CUSTOMER_ID
+GROUP BY C.CUSTOMER_ID, C.FULL_NAME, C.EMAIL, C.COUNTRY, C.IS_ACTIVE
+ORDER BY lifetime_revenue DESC;
