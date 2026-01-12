@@ -61,11 +61,13 @@ An e-commerce company generates data across multiple operational systems (custom
 **Dimension Tables:**
 
 1. **DIM_DATE** (Calendar dimension)
+
    - Grain: One row per date
    - Attributes: year, quarter, month, week, day_of_week, is_weekend
    - Range: Dynamically generated from order dates
 
 2. **DIM_CUSTOMER**
+
    - Grain: One row per customer
    - Attributes: customer_id (PK), full_name, email, phone, country, is_active
    - Source: SILVER.CUSTOMERS
@@ -78,6 +80,7 @@ An e-commerce company generates data across multiple operational systems (custom
 **Fact Tables:**
 
 1. **FACT_ORDERS**
+
    - Grain: One row per order
    - Keys: order_id (PK), customer_id (FK), order_date_key (FK)
    - Metrics: order_revenue, order_item_count, total_quantity, total_discount, list_price_total
@@ -85,12 +88,14 @@ An e-commerce company generates data across multiple operational systems (custom
    - Business Logic: Aggregates line items, joins payment/shipment status
 
 2. **FACT_ORDER_ITEMS**
+
    - Grain: One row per line item (order + product combination)
    - Keys: order_item_id (PK), order_id (FK), product_id (FK), customer_id (FK), order_date_key (FK)
    - Metrics: quantity, list_price, actual_price, revenue, discount_per_unit, total_discount, discount_percentage
    - Business Logic: Calculates discounts by comparing list price vs actual price
 
 3. **FACT_PAYMENTS**
+
    - Grain: One row per payment transaction
    - Keys: payment_id (PK), order_id (FK), customer_id (FK), payment_date_key (FK)
    - Metrics: payment_amount, order_total, payment_difference
@@ -220,6 +225,7 @@ Create `config/snowflake_config.json` with your credentials:
 ### 4. Prepare Data Files
 
 Ensure all CSV files are in the `data/` directory:
+
 - customers.csv
 - products.csv
 - orders.csv
@@ -237,6 +243,7 @@ python python/run_pipeline.py
 ```
 
 This executes all layers sequentially:
+
 1. Bronze Setup (infrastructure)
 2. Bronze Load (CSV ingestion)
 3. Silver Transform (data cleansing)
@@ -391,25 +398,31 @@ Data Quality Issues:
 Each Silver table includes boolean flags:
 
 **CUSTOMERS**:
+
 - `IS_EMAIL_MISSING`: TRUE if email is NULL
 
 **PRODUCTS**:
+
 - `IS_PRICE_INVALID`: TRUE if price < 0 or NULL
 
 **ORDERS**:
+
 - `IS_CUSTOMER_ORPHANED`: TRUE if customer_id not in CUSTOMERS
 
 **ORDER_ITEMS**:
+
 - `IS_ORDER_ORPHANED`: TRUE if order_id not in ORDERS
 - `IS_PRODUCT_ORPHANED`: TRUE if product_id not in PRODUCTS
 - `IS_QUANTITY_INVALID`: TRUE if quantity ≤ 0
 - `IS_PRICE_INVALID`: TRUE if unit_price < 0
 
 **PAYMENTS**:
+
 - `IS_ORDER_ORPHANED`: TRUE if order_id not in ORDERS
 - `IS_AMOUNT_INVALID`: TRUE if amount < 0
 
 **SHIPMENTS**:
+
 - `IS_ORDER_ORPHANED`: TRUE if order_id not in ORDERS
 
 ## Key Design Decisions
@@ -417,17 +430,20 @@ Each Silver table includes boolean flags:
 ### Why This Architecture?
 
 1. **Medallion Pattern**: Industry-standard for data lakehouses
+
    - Bronze: Maintains data lineage and auditability
    - Silver: Single source of truth for clean data
    - Gold: Optimized for analytics queries
    - Mart: Business-specific reporting
 
 2. **SQL-First Approach**: Transformations in SQL files, not embedded in Python
+
    - Version control friendly
    - Easy to review and modify
    - Portable across orchestration tools
 
 3. **Idempotent Design**: All scripts use `CREATE OR REPLACE`
+
    - Can rerun pipeline multiple times
    - No manual cleanup required
 
@@ -446,7 +462,7 @@ Each Silver table includes boolean flags:
 ### Query 1: Top 10 Customers by Revenue
 
 ```sql
-SELECT 
+SELECT
     customer_id,
     full_name,
     lifetime_revenue,
@@ -460,7 +476,7 @@ LIMIT 10;
 ### Query 2: Monthly Revenue Trends
 
 ```sql
-SELECT 
+SELECT
     year,
     month_name,
     total_revenue,
@@ -474,7 +490,7 @@ ORDER BY year DESC, month DESC;
 ### Query 3: Product Performance with Discounting
 
 ```sql
-SELECT 
+SELECT
     product_name,
     category,
     list_price,
@@ -487,46 +503,6 @@ WHERE total_quantity_sold > 10
 ORDER BY total_revenue DESC;
 ```
 
-## Troubleshooting
-
-### Common Issues
-
-**Issue**: `ModuleNotFoundError: No module named 'snowflake'`
-- **Solution**: Activate venv and install: `pip install snowflake-connector-python`
-
-**Issue**: `ProgrammingError: Authentication failed`
-- **Solution**: Check `config/snowflake_config.json` credentials, ensure account identifier format is correct
-
-**Issue**: `FileNotFoundError: [Errno 2] No such file or directory: 'data/customers.csv'`
-- **Solution**: Run commands from project root directory, ensure all CSV files are in `data/` folder
-
-**Issue**: `SQL compilation error: invalid identifier`
-- **Solution**: Run layers in order (Bronze → Silver → Gold → Mart), each layer depends on previous
-
-**Issue**: Pipeline runs but shows orphaned records
-- **Solution**: This is expected; check Silver layer quality flags to identify data issues in source files
-
-## Performance Considerations
-
-For production deployment:
-
-1. **Add Clustering**: Cluster Gold facts by date_key for query performance
-2. **Implement Partitioning**: Partition large facts by date ranges
-3. **Incremental Loading**: Use MERGE statements with CDC (Change Data Capture)
-4. **Parallel Processing**: Run independent Silver transformations in parallel
-5. **Resource Monitoring**: Add query performance logging and cost tracking
-
-## Future Enhancements
-
-- [ ] Incremental load patterns with watermarking
-- [ ] Slowly Changing Dimension (SCD Type 2) for product/customer history
-- [ ] Automated data quality alerts (email/Slack notifications)
-- [ ] dbt integration for transformation orchestration
-- [ ] Great Expectations for comprehensive data validation
-- [ ] Airflow/Prefect for production scheduling
-- [ ] CI/CD pipeline for automated testing and deployment
-- [ ] Data catalog integration (Alation, Collibra)
-
 ## Success Metrics
 
 Pipeline is production-ready when:
@@ -537,11 +513,3 @@ Pipeline is production-ready when:
 - ✅ Business metrics reconcile with source systems
 - ✅ Execution time < 5 minutes for sample dataset
 - ✅ Clear error messages for any failures
-
-## Contact & Support
-
-For questions about this pipeline implementation, please open an issue in the GitHub repository.
-
-## License
-
-This project is for educational and assessment purposes.
