@@ -18,9 +18,6 @@ conn = snowflake.connector.connect(
 cursor = conn.cursor()
 
 try:
-    print("\nMART LAYER - Business Views")
-    print("="*70)
-
     mart_files = [
         "sql/mart/01_daily_revenue.sql",
         "sql/mart/02_monthly_revenue.sql",
@@ -36,9 +33,6 @@ try:
         print(f"Creating {view_name}...")
         with open(sql_file, 'r') as f:
             cursor.execute(f.read())
-
-    print("\nMART LAYER SUMMARY")
-    print("="*70)
 
     views = [
         'DAILY_REVENUE',
@@ -66,13 +60,10 @@ try:
     cursor.execute("SELECT COUNT(*) FROM MART.PRODUCT_PERFORMANCE")
     product_count = cursor.fetchone()[0]
     print(f"  Products tracked: {product_count:,}")
-
-    print("\n" + "="*70)
-    print("✓ Mart layer transformation completed successfully")
-    print("="*70 + "\n")
+    print("Mart layer completed")
 
 except Exception as e:
-    print(f"\n✗ ERROR: {e}\n")
+    print(f"ERROR: {e}")
     raise
 
 finally:

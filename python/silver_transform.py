@@ -18,9 +18,6 @@ conn = snowflake.connector.connect(
 cursor = conn.cursor()
 
 try:
-    print("\nSILVER LAYER TRANSFORMATION")
-    print("="*70)
-
     sql_files = [
         "sql/silver/01_customers.sql",
         "sql/silver/02_products.sql",
@@ -36,8 +33,7 @@ try:
         with open(sql_file, 'r') as f:
             cursor.execute(f.read())
 
-    print("\nDATA QUALITY SUMMARY")
-    print("="*70)
+    print("\nData Quality Summary:")
 
     tables = ['CUSTOMERS', 'PRODUCTS', 'ORDERS', 'ORDER_ITEMS', 'PAYMENTS', 'SHIPMENTS']
     total_records = 0

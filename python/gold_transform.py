@@ -18,9 +18,6 @@ conn = snowflake.connector.connect(
 cursor = conn.cursor()
 
 try:
-    print("\nGOLD LAYER - Dimensional Model")
-    print("="*70)
-
     gold_files = [
         "sql/gold/01_dim_date.sql",
         "sql/gold/02_dim_customer.sql",
@@ -37,10 +34,7 @@ try:
         with open(sql_file, 'r') as f:
             cursor.execute(f.read())
 
-    print("\nGOLD LAYER SUMMARY")
-    print("="*70)
-
-    print("Dimension Tables:")
+    print("\nDimension Tables:")
     for table in ['DIM_DATE', 'DIM_CUSTOMER', 'DIM_PRODUCT']:
         cursor.execute(f"SELECT COUNT(*) FROM GOLD.{table}")
         count = cursor.fetchone()[0]
@@ -51,13 +45,10 @@ try:
         cursor.execute(f"SELECT COUNT(*) FROM GOLD.{table}")
         count = cursor.fetchone()[0]
         print(f"  {table:20s}: {count:>10,}")
-
-    print("\n" + "="*70)
-    print("Gold layer transformation completed successfully")
-    print("="*70 + "\n")
+    print("Gold layer completed")
 
 except Exception as e:
-    print(f"\n✗ ERROR: {e}\n")
+    print(f"ERROR: {e}")
     raise
 
 finally:
