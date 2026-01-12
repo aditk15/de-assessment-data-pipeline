@@ -83,41 +83,41 @@ An e-commerce company generates data across multiple operational systems (custom
 
    - Grain: One row per order
    - Keys: order_id (PK), customer_id (FK), order_date_key (FK)
-   - Metrics: order_revenue, order_item_count, total_quantity, total_discount, list_price_total
+   - Metrics: order_total_usd, order_revenue_usd, list_price_total_usd, total_discount_usd, payment_amount_usd, order_item_count, total_quantity
    - Flags: is_paid, is_delivered, is_fulfilled
-   - Business Logic: Aggregates line items, joins payment/shipment status
+   - Business Logic: Aggregates line items with USD conversion; uses payment_summary CTE to aggregate multiple payments per order (handles split payments/retries)
 
 2. **FACT_ORDER_ITEMS**
 
    - Grain: One row per line item (order + product combination)
    - Keys: order_item_id (PK), order_id (FK), product_id (FK), customer_id (FK), order_date_key (FK)
-   - Metrics: quantity, list_price, actual_price, revenue, discount_per_unit, total_discount, discount_percentage
-   - Business Logic: Calculates discounts by comparing list price vs actual price
+   - Metrics: quantity, list_price_usd, actual_price_usd, revenue_usd, discount_per_unit_usd, total_discount_usd, discount_percentage
+   - Business Logic: Calculates discounts by comparing list price vs actual price; converts all amounts to USD
 
 3. **FACT_PAYMENTS**
 
    - Grain: One row per payment transaction
    - Keys: payment_id (PK), order_id (FK), customer_id (FK), payment_date_key (FK)
-   - Metrics: payment_amount, order_total, payment_difference
-   - Attributes: payment_method, payment_status, is_payment_successful
+   - Metrics: payment_amount_usd, order_total_usd, payment_difference_usd
+   - Attributes: payment_method, payment_status, is_payment_successful, original currencies
 
 4. **FACT_SHIPMENTS**
    - Grain: One row per shipment
    - Keys: shipment_id (PK), order_id (FK), customer_id (FK), shipment_date_key (FK), delivery_date_key (FK)
-   - Metrics: delivery_days, days_to_ship, days_to_deliver, order_total
+   - Metrics: delivery_days, days_to_ship, days_to_deliver, order_total_usd
    - Attributes: carrier, shipment_status, is_delivered
 
 ### Mart Layer Views
 
-Business-friendly aggregated views:
+Business-friendly aggregated views with USD-normalized metrics:
 
-- **DAILY_REVENUE**: Daily order counts, revenue, discounts, fulfillment metrics
-- **MONTHLY_REVENUE**: Monthly trends with unique customers, payment/delivery rates
-- **CUSTOMER_LIFETIME_VALUE**: Per-customer revenue, order frequency, discount usage
-- **PRODUCT_PERFORMANCE**: Product-level sales, revenue, discount analysis
-- **CATEGORY_PERFORMANCE**: Category-level aggregations
-- **PAYMENT_ANALYSIS**: Success rates by payment method
-- **SHIPMENT_PERFORMANCE**: Carrier performance, delivery times
+- **DAILY_REVENUE**: Daily order counts, total_revenue_usd, avg_order_value_usd, total_discounts_usd, fulfillment metrics
+- **MONTHLY_REVENUE**: Monthly trends with unique customers, payment/delivery rates, avg_discount_percentage
+- **CUSTOMER_LIFETIME_VALUE**: Per-customer lifetime_revenue_usd, order frequency, total_discounts_received_usd
+- **PRODUCT_PERFORMANCE**: Product-level sales, total_revenue_usd, total_discounts_given_usd, avg_discount_percentage
+- **CATEGORY_PERFORMANCE**: Category-level aggregations in USD
+- **PAYMENT_ANALYSIS**: Success rates by payment method, total_amount_usd
+- **SHIPMENT_PERFORMANCE**: Carrier performance, average delivery times, on-time delivery rates
 
 ## Project Structure
 
@@ -147,7 +147,8 @@ de-assessment-data-pipeline/
 │   │   ├── 03_orders.sql
 │   │   ├── 04_order_items.sql
 │   │   ├── 05_payments.sql
-│   │   └── 06_shipments.sql
+│   │   ├── 06_shipments.sql
+│   │   └── 07_exchange_rates.sql
 │   ├── gold/
 │   │   ├── 01_dim_date.sql
 │   │   ├── 02_dim_customer.sql
@@ -315,14 +316,14 @@ Mart layer completed
    - Shipment is delivered
 3. **Revenue Calculation**: Uses actual selling price × quantity (line_total), not list price
 4. **Date Dimension**: Generated dynamically from MIN/MAX order dates in Silver layer
-5. **Currency**: No currency conversion applied; assumes single currency (USD) or downstream tool handles conversion
+5. **Currency Conversion**: Multi-currency support implemented via SILVER.EXCHANGE_RATES table with static conversion rates to USD base currency; all Gold fact tables and Mart views use USD-normalized metrics (_usd suffix)
 
 ### Data Relationships
 
 1. **One-to-One**:
-   - Order → Payment (one payment per order)
    - Order → Shipment (one shipment per order)
 2. **One-to-Many**:
+   - Order → Payments (multiple payments per order; handles split payments and retries)
    - Order → Order Items (multiple line items per order)
    - Customer → Orders (customer can have multiple orders)
    - Product → Order Items (product can appear in multiple orders)
@@ -338,12 +339,20 @@ Mart layer completed
    - Country names: UPPER() for consistency
    - Email/Phone: TRIM() to remove whitespace
    - Status fields: Keep original casing from source
+3. **Currency Conversion Setup**:
+   - EXCHANGE_RATES table with static conversion rates (USD=1.0, EUR=1.085, GBP=1.27, CAD=0.74, AUD=0.66, JPY=0.0068, CNY=0.139, INR=0.012)
+   - Joined in Gold layer to convert all monetary values to USD
+4. **Enhanced Shipments Logic**:
+   - Sets delivery_date to NULL for IN_TRANSIT/CANCELLED/PENDING statuses (prevents illogical dates)
+   - Calculates delivery_days only for DELIVERED shipments with valid dates
+   - Flags illogical delivery dates (status doesn't match date presence)
+   - Validates delivery_date is not before shipment_date
 
 ## Known Limitations
 
 ### Scope Limitations
 
-1. **No Foreign Exchange**: Multi-currency support not implemented; assumes all transactions in same currency
+1. **Static Exchange Rates**: Currency conversion uses static rates in EXCHANGE_RATES table; real-time FX rates not implemented
 2. **No Slowly Changing Dimensions**: Dimension tables are Type 1 (overwrite); historical changes not tracked
 3. **No Incremental Loading**: Pipeline performs full refresh each run; not optimized for incremental updates
 4. **Single Source System**: Assumes all data comes from one operational database
@@ -424,6 +433,9 @@ Each Silver table includes boolean flags:
 **SHIPMENTS**:
 
 - `IS_ORDER_ORPHANED`: TRUE if order_id not in ORDERS
+- `IS_DELIVERY_DATE_MISSING`: TRUE if delivery_date is NULL
+- `IS_DELIVERY_DATE_ILLOGICAL`: TRUE if shipment status is IN_TRANSIT/CANCELLED/PENDING but delivery_date is populated
+- `IS_DELIVERY_BEFORE_SHIPMENT`: TRUE if delivery_date is before shipment_date
 
 ## Key Design Decisions
 
@@ -451,6 +463,17 @@ Each Silver table includes boolean flags:
    - Enables data quality trend analysis
    - Allows business to make filtering decisions
 
+5. **Payment Aggregation Strategy**: Handles multiple payments per order using CTE pattern
+   - payment_summary CTE aggregates all payments before joining to orders
+   - Prevents row multiplication in GROUP BY clauses
+   - Uses SUM() for total payment amounts, BOOL_OR() for success flags
+   - Supports split payments, partial payments, and payment retries
+
+6. **Currency Normalization**: All monetary metrics converted to USD in Gold/Mart layers
+   - Enables cross-currency analytics and aggregations
+   - Preserves original currency information alongside USD values
+   - Static exchange rates stored in SILVER.EXCHANGE_RATES table
+
 ### Technology Choices
 
 - **Snowflake**: Cloud-native, handles semi-structured data, built-in optimization
@@ -465,11 +488,11 @@ Each Silver table includes boolean flags:
 SELECT
     customer_id,
     full_name,
-    lifetime_revenue,
+    lifetime_revenue_usd,
     total_orders,
-    avg_order_value
+    avg_order_value_usd
 FROM MART.CUSTOMER_LIFETIME_VALUE
-ORDER BY lifetime_revenue DESC
+ORDER BY lifetime_revenue_usd DESC
 LIMIT 10;
 ```
 
@@ -479,7 +502,7 @@ LIMIT 10;
 SELECT
     year,
     month_name,
-    total_revenue,
+    total_revenue_usd,
     total_orders,
     unique_customers,
     avg_discount_percentage
@@ -493,14 +516,14 @@ ORDER BY year DESC, month DESC;
 SELECT
     product_name,
     category,
-    list_price,
-    total_revenue,
+    list_price_usd,
+    total_revenue_usd,
     total_quantity_sold,
     avg_discount_percentage,
     unique_customers
 FROM MART.PRODUCT_PERFORMANCE
 WHERE total_quantity_sold > 10
-ORDER BY total_revenue DESC;
+ORDER BY total_revenue_usd DESC;
 ```
 
 ## Success Metrics
