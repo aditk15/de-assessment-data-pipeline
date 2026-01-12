@@ -316,7 +316,7 @@ Mart layer completed
    - Shipment is delivered
 3. **Revenue Calculation**: Uses actual selling price × quantity (line_total), not list price
 4. **Date Dimension**: Generated dynamically from MIN/MAX order dates in Silver layer
-5. **Currency Conversion**: Multi-currency support implemented via SILVER.EXCHANGE_RATES table with static conversion rates to USD base currency; all Gold fact tables and Mart views use USD-normalized metrics (_usd suffix)
+5. **Currency Conversion**: Multi-currency support implemented via SILVER.EXCHANGE_RATES table with static conversion rates to USD base currency; all Gold fact tables and Mart views use USD-normalized metrics (\_usd suffix)
 
 ### Data Relationships
 
@@ -460,10 +460,12 @@ Each Silver table includes boolean flags:
    - No manual cleanup required
 
 4. **Data Quality Flags**: Preserve problematic records with flags vs hard filtering
+
    - Enables data quality trend analysis
    - Allows business to make filtering decisions
 
 5. **Payment Aggregation Strategy**: Handles multiple payments per order using CTE pattern
+
    - payment_summary CTE aggregates all payments before joining to orders
    - Prevents row multiplication in GROUP BY clauses
    - Uses SUM() for total payment amounts, BOOL_OR() for success flags
@@ -526,13 +528,28 @@ WHERE total_quantity_sold > 10
 ORDER BY total_revenue_usd DESC;
 ```
 
-## Success Metrics
+### Data Validation Queries
 
-Pipeline is production-ready when:
+Check for data quality issues:
 
-- ✅ Runs end-to-end without manual intervention
-- ✅ Data quality score consistently > 95%
-- ✅ All fact tables have matching dimension keys (no orphans)
-- ✅ Business metrics reconcile with source systems
-- ✅ Execution time < 5 minutes for sample dataset
-- ✅ Clear error messages for any failures
+```sql
+-- Verify currency conversion is working
+SELECT ORIGINAL_CURRENCY, COUNT(*)
+FROM GOLD.FACT_ORDERS
+GROUP BY ORIGINAL_CURRENCY;
+
+-- Check for orders with multiple payments
+SELECT ORDER_ID, COUNT(*) AS payment_count
+FROM SILVER.PAYMENTS
+GROUP BY ORDER_ID
+HAVING COUNT(*) > 1
+ORDER BY payment_count DESC;
+
+-- Validate shipment delivery dates
+SELECT
+    SHIPMENT_STATUS,
+    COUNT(*) AS total_shipments,
+    SUM(CASE WHEN IS_DELIVERY_DATE_ILLOGICAL THEN 1 ELSE 0 END) AS illogical_dates
+FROM SILVER.SHIPMENTS
+GROUP BY SHIPMENT_STATUS;
+```
